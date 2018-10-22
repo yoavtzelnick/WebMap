@@ -71,6 +71,7 @@ This project is currently a beta, and I'm not super skilled on Django so, every 
 
 ### Contributors List
 - s3th_0x [@adubaldo](https://github.com/adubaldo) (bug on single host report)
+- Neetx [@Neetx](https://github.com/Neetx) (bug on xml with no host up)
 
 ## Contacts
 Twitter: [@Menin_TheMiddle](https://twitter.com/Menin_TheMiddle)<br>

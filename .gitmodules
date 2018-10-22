@@ -1,0 +1,3 @@
+[submodule "nmapreport"]
+	path = nmapreport
+	url = https://github.com/Rev3rseSecurity/WebMap.git

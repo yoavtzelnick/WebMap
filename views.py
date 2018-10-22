@@ -262,16 +262,24 @@ def index(request, filterservice="", filterportid=""):
 			r['out2'] = json.dumps(oo['nmaprun'], indent=4)
 			o = json.loads(r['out2'])
 
-			if type(o['host']) is not dict:
-				hostnum = str(len(o['host']))
+			if 'host' in o:
+				if type(o['host']) is not dict:
+					hostnum = str(len(o['host']))
+				else:
+					hostnum = '1'
 			else:
-				hostnum = '1'
+				hostnum = '0'
+
+			if hostnum != '0':
+				viewhref = '/setscanfile/'+html.escape(i)
+			else:
+				viewhref = '/" disabled="disabled'
 
 			r['trhost'] += '<tr>'+\
 			'	<td style="font-family:monospace">'+html.escape(i)+'</td>'+\
 			'	<td>'+html.escape(o['@startstr'])+'</td>'+\
 			'	<td>'+hostnum+'</td>'+\
-			'	<td><a href="/setscanfile/'+html.escape(i)+'" class="btn blue right">view</a></td>'+\
+			'	<td><a href="'+viewhref+'" class="btn blue right">view</a></td>'+\
 			'</tr>'
 
 		# r['out'] = os.listdir('/opt/xml')

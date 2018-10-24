@@ -216,7 +216,7 @@ def details(request, address):
 		if addressmd5 in cvehost[scanmd5]:
 			for cveport in cvehost[scanmd5][addressmd5]:
 				cvejson = json.loads(cvehost[scanmd5][addressmd5][cveport])
-				r['out'] = json.dumps(cvejson, indent=4)
+				# r['out'] = json.dumps(cvejson, indent=4)
 				for cveobj in cvejson:
 
 					cverefout = ''

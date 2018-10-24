@@ -11,6 +11,7 @@ urlpatterns = [
 	path('api/setlabel/<objtype>/<label>/<hashstr>/', api.label, name='api_label'),
 	path('api/rmlabel/<objtype>/<hashstr>/', api.rmlabel, name='api_rmlabel'),
 	path('api/pdf/', api.genPDF, name='genPDF'),
+	path('api/getcve/', api.getCVE, name='getCVE'),
 	path('api/savenotes/', api.saveNotes, name='genPDF'),
 	path('api/rmnotes/<hashstr>/', api.rmNotes, name='api_rmnotes'),
 	path('api/<address>/<portid>/', api.port_details, name='api_port'),

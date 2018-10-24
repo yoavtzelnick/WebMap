@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.http import HttpResponse
-import xmltodict, json, html, os, hashlib, re
+import xmltodict, json, html, os, hashlib, re, requests
 from collections import OrderedDict
 
 def rmNotes(request, hashstr):
@@ -102,4 +102,28 @@ def genPDF(request):
 
 		os.popen('/opt/wkhtmltox/bin/wkhtmltopdf --cookie sessionid '+request.session._session_key+' --enable-javascript --javascript-delay 6000 http://127.0.0.1:8000/view/pdf/ /opt/nmapdashboard/nmapreport/static/'+pdffile+'.pdf')
 		res = {'ok':'PDF created', 'file':'/static/'+pdffile+'.pdf'}
+		return HttpResponse(json.dumps(res), content_type="application/json")
+
+def getCVE(request):
+	res = {}
+
+	if request.method == "POST":
+		scanfilemd5 = hashlib.md5(str(request.session['scanfile']).encode('utf-8')).hexdigest()
+		hostmd5 = hashlib.md5(str(request.POST['host']).encode('utf-8')).hexdigest()
+		portmd5 = hashlib.md5(str(request.POST['port']).encode('utf-8')).hexdigest()
+
+		# request.POST['host']
+		r = requests.get('http://cve.circl.lu/api/cvefor/'+request.POST['cpe'])
+
+		if request.POST['host'] not in res:
+			res[request.POST['host']] = {}
+
+		cvejson = r.json()
+
+		if type(cvejson) is list and len(cvejson) > 0:
+			res[request.POST['host']][request.POST['port']] = cvejson[0]
+			f = open('/opt/notes/'+scanfilemd5+'_'+hostmd5+'.'+request.POST['port']+'.cve', 'w')
+			f.write(json.dumps(cvejson))
+			f.close()
+
 		return HttpResponse(json.dumps(res), content_type="application/json")

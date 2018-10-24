@@ -81,3 +81,6 @@ target/
 
 #Ipython Notebook
 .ipynb_checkpoints
+
+# webmap PDF report
+static/*.pdf

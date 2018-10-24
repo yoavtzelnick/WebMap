@@ -2,6 +2,74 @@ $(document).ready(function() {
 	// doc ready
 });
 
+var cpetot = 0;
+var cpetimer;
+function checkCVE() {
+	cpe = JSON.parse(atob(decodeURIComponent($('#cpestring').val())));
+	csrftoken = $('input[name="csrfmiddlewaretoken"]').val();
+	console.log(cpe);
+	/* $.get('http://cve.circl.lu/api/cvefor/cpe:/a:openbsd:openssh:7.6').done(function(d) {
+		console.log(d);
+	}); */
+
+	$('#modal1').css('background-color','#3e3e3e');
+	$('#modaltitle').html('Looking for CVE and Exploits');
+	$('#modalbody').html(
+		'This process could take a while, please wait...'+
+		'<div class="progress"><div class="indeterminate"></div></div>'
+	);
+	$('#modalfooter').html('');
+	$('#modal1').modal('open');
+
+	cpetot = Object.keys(cpe).length;
+	console.log(cpetot);
+
+	for(host in cpe) {
+		for(port in cpe[host]) {
+			for(cpestr in cpe[host][port]) {
+				if(/^cpe:.+:.+:.+:.*$/.test(cpestr)) {
+					console.log(cpestr);
+					$.post('/report/api/getcve/', {
+						'cpe': cpestr,
+						'host':host,
+						'port':port,
+						'csrfmiddlewaretoken': csrftoken
+					}).done(function(d) {
+						console.log(d);
+						for(rhost in d) {
+							for(rport in d[rhost]) {
+								$('#modalbody').append('<div class="small"><i>Received: '+d[rhost][rport]['id']+' host:'+rhost+' port:'+rport+'</i></div>');
+							}
+						}
+					}).always(function() { cpetot = (cpetot - 1); });
+				} else {
+					cpetot = (cpetot - 1);
+				}
+
+				console.log(cpetot);
+			}
+		}
+	}
+
+	cpetimer = setInterval(function() {
+		if(checkCPETOT()) {
+			console.log('END');
+			window.clearInterval(cpetimer);
+			$('#modalbody').html('Done. Please, reload this page by clicking on Reload button.');
+			$('#modalfooter').html('<button class="btn blue" onclick="javascript:location.reload();">Reload</button>');
+		}
+	}, 2000);
+
+}
+
+function checkCPETOT() {
+	if(cpetot <= 0) {
+		return true;
+	} else {
+		return false;
+	}
+}
+
 function genPDF(md5scan) {
 	if(/^[a-f0-9]{32,32}$/.test(md5scan)) {
 		$.get('/report/api/pdf/').done(function(data) {

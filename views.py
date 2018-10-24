@@ -55,6 +55,21 @@ def details(request, address):
 				noteshost[m.group(1)] = {}
 			noteshost[m.group(1)][m.group(2)] = open('/opt/notes/'+nf, 'r').read()
 
+	# collect all cve in cvehost dict
+	cvehost = {}
+	cvefiles = os.listdir('/opt/notes')
+	for cf in cvefiles:
+		m = re.match('^('+scanmd5+')_([a-z0-9]{32,32})\.([0-9]+)\.cve$', cf)
+		if m is not None:
+			if m.group(1) not in cvehost:
+				cvehost[m.group(1)] = {}
+
+			if m.group(2) not in cvehost[m.group(1)]:
+				cvehost[m.group(1)][m.group(2)] = {}
+
+			cvehost[m.group(1)][m.group(2)][m.group(3)] = open('/opt/notes/'+cf, 'r').read()
+
+
 
 	r['trhead'] = '<tr><th>Port</th><th style="width:300px;">Product / Version</th><th>Extra Info</th><th>&nbsp;</th></tr>'
 	pel=0
@@ -182,11 +197,12 @@ def details(request, address):
 		if type(ik) is not dict:
 			break;
 
+	r['table'] = ''
 	notesout,notesb64,removenotes = '','',''
 	if scanmd5 in noteshost:
 		if addressmd5 in noteshost[scanmd5]:
 			notesb64 = noteshost[scanmd5][addressmd5]
-			r['table'] = '<div class="card" style="background-color:#3e3e3e;">'+\
+			r['table'] += '<div class="card" style="background-color:#3e3e3e;">'+\
 			'	<div class="card-content"><h5>Notes</h5>'+\
 			'		'+base64.b64decode(urllib.parse.unquote(notesb64)).decode('ascii')+\
 			'	</div>'+\
@@ -195,8 +211,37 @@ def details(request, address):
 			#notesout = '<br><a id="noteshost'+str(hostindex)+'" href="#!" onclick="javascript:openNotes(\''+hashlib.md5(str(address).encode('utf-8')).hexdigest()+'\', \''+notesb64+'\');" class="small"><i class="fas fa-comment"></i> contains notes</a>'
 			#removenotes = '<li><a href="#!" onclick="javascript:removeNotes(\''+addressmd5+'\', \''+str(hostindex)+'\');">Remove notes</a></li>'
 
+	cveout = ''
+	if scanmd5 in cvehost:
+		if addressmd5 in cvehost[scanmd5]:
+			for cveport in cvehost[scanmd5][addressmd5]:
+				cvejson = json.loads(cvehost[scanmd5][addressmd5][cveport])
+				r['out'] = json.dumps(cvejson, indent=4)
+				for cveobj in cvejson:
 
+					cverefout = ''
+					for cveref in cveobj['references']:
+						cverefout += '<a href="'+cveref+'">'+cveref+'</a><br>'
 
+					cveexdbout = ''
+					if 'exploit-db' in cveobj:
+						cveexdbout = '<br><div class="small" style="line-height:20px;"><b>Exploit DB:</b><br>'
+						for cveexdb in cveobj['exploit-db']:
+							if 'title' in cveexdb:
+								cveexdbout += '<a href="'+cveexdb['source']+'">'+html.escape(cveexdb['title'])+'</a><br>'
+						cveexdbout += '</div>'
+
+					cveout += '<div style="line-height:28px;padding:10px;border:solid #333 1px;border-radius:4px;margin-top:10px;">'+\
+					'	<span class="label red">'+html.escape(cveobj['id'])+'</span> '+html.escape(cveobj['summary'])+'<br><br>'+\
+					'	<div class="small" style="line-height:20px;"><b>References:</b><br>'+cverefout+'</div>'+\
+					cveexdbout+\
+					'</div>'
+
+			r['table'] += '<div class="card" style="background-color:#3e3e3e;">'+\
+			'	<div class="card-content"><span class="card-title">CVE LIST:</span>'+\
+			cveout+\
+			'	</div>'+\
+			'</div>'
 
 	r['pretable'] = '<script> '+\
 	'$(document).ready(function() { '+\
@@ -225,7 +270,6 @@ def index(request, filterservice="", filterportid=""):
 		# no file selected
 		xmlfiles = os.listdir('/opt/xml')
 
-
 		r['table'] = '<div class="" style="border-top:solid #444 1px;"><br>'+\
 		'		Put your Nmap XML files in <span class="tmlabel grey-text" style="background-color:transparent;">/opt/xml/</span> directory, example:<br><br>'+\
 		'		<div class="tmlabel black grey-text" style="padding:10px;font-size:14px;">nmap -A -T4 -oX myscan.xml 192.168.1.0/24<br>'+\
@@ -250,7 +294,6 @@ def index(request, filterservice="", filterportid=""):
 		'		<script src="https://apis.google.com/js/platform.js"></script><div class="g-ytsubscribe" data-channelid="UCzvJStjySZVvOBsPl-Vgj0g" data-layout="default" data-theme="dark" data-count="default"></div>'+\
 		'	</div>'+\
 		'</div>'
-
 
 		r['scaninfo'] = '<span class="card-title">Select a Nmap XML file</span><p>Nmap XML files: '+ str(len(xmlfiles)) +'</p>'
 
@@ -294,6 +337,7 @@ def index(request, filterservice="", filterportid=""):
 	'	<ul>'+\
 	'		<li><a class="btn-floating red tooltipped" data-position="left" data-tooltip="PDF Report" onclick="javascript:genPDF(\''+scanmd5+'\');"><i class="material-icons">insert_chart</i></a></li>'+\
 	'		<li><a class="btn-floating blue darken-1 tooltipped" data-position="left" data-tooltip="Hide/Show hosts with no open ports" onclick="javascript:$(\'.zeroportopen\').fadeToggle();"><i class="material-icons">view_day</i></a></li>'+\
+	'		<li><a class="btn-floating orange tooltipped" data-position="left" data-tooltip="Check for CVE and Exploits on all hosts" onclick="javascript:checkCVE();"><i class="fas fa-bolt"></i></a></li>'+\
 	'	</ul>'+\
 	'</div>'
 
@@ -317,13 +361,25 @@ def index(request, filterservice="", filterportid=""):
 				noteshost[m.group(1)] = {}
 			noteshost[m.group(1)][m.group(2)] = open('/opt/notes/'+nf, 'r').read()
 
+	# collect all cve in cvehost dict
+	cvehost = {}
+	cvefiles = os.listdir('/opt/notes')
+	for cf in cvefiles:
+		m = re.match('^('+scanmd5+')_([a-z0-9]{32,32})\.([0-9]+)\.cve$', cf)
+		if m is not None:
+			if m.group(1) not in cvehost:
+				cvehost[m.group(1)] = {}
+
+			if m.group(2) not in cvehost[m.group(1)]:
+				cvehost[m.group(1)][m.group(2)] = {}
+
+			cvehost[m.group(1)][m.group(2)][m.group(3)] = open('/opt/notes/'+cf, 'r').read()
+
 	tableout = ''
 	hostsup = 0
-	ports = { 'open': 0, 'closed': 0, 'filtered': 0 }
-	allostypelist = {}
-	sscount = {}
-	picount = {}
 	hostindex = 1
+	ports = { 'open': 0, 'closed': 0, 'filtered': 0 }
+	allostypelist, sscount, picount, cpe = {}, {}, {}, {}
 
 	r['trhost'] = ''
 	r['trhead'] = '<tr><th width="260">Host</th><th>Port State</th><th width="160" style="text-align:center;">Tot Ports</th><th width="200">Services</th><th width="200">Ports</th><th>&nbsp;</th></tr>'
@@ -348,6 +404,15 @@ def index(request, filterservice="", filterportid=""):
 		ss,pp,ost = {},{},{}
 		lastportid = 0
 
+		if '@addr' in i['address']:
+			address = i['address']['@addr']
+		elif type(i['address']) is list:
+			for ai in i['address']:
+				if ai['@addrtype'] == 'ipv4':
+					address = ai['@addr'] 
+
+		addressmd5 = hashlib.md5(str(address).encode('utf-8')).hexdigest()
+
 		striggered = False
 		if 'ports' in i and 'port' in i['ports']:
 			for pobj in i['ports']['port']:
@@ -370,6 +435,21 @@ def index(request, filterservice="", filterportid=""):
 				ss[p['service']['@name']] = p['service']['@name']
 				pp[p['@portid']] = p['@portid']
 
+				# cpehtml = ''
+				cpe[address] = {}
+				if 'cpe' in p['service']:
+					if type(p['service']['cpe']) is list:
+						for cpei in p['service']['cpe']:
+							if p['@portid'] not in cpe[address]:
+								cpe[address][p['@portid']] = {}
+
+							cpe[address][p['@portid']][cpei] = cpei
+					else:
+						if p['@portid'] not in cpe[address]:
+							cpe[address][p['@portid']] = {}
+
+						cpe[address][p['@portid']][p['service']['cpe']] = p['service']['cpe']
+
 				if '@ostype' in p['service']:
 					if p['service']['@ostype'] in allostypelist:
 						allostypelist[p['service']['@ostype']] = (allostypelist[p['service']['@ostype']] +1)
@@ -387,7 +467,6 @@ def index(request, filterservice="", filterportid=""):
 					picount[p['@portid']] = (picount[p['@portid']] + 1)
 				else:
 					picount[p['@portid']] = 1
-
 					
 				if p['state']['@state'] == 'closed':
 					ports['closed'] = (ports['closed'] + 1)
@@ -421,14 +500,6 @@ def index(request, filterservice="", filterportid=""):
 			if po == 0:
 				poclass = 'zeroportopen'
 
-			if '@addr' in i['address']:
-				address = i['address']['@addr']
-			elif type(i['address']) is list:
-				for ai in i['address']:
-					if ai['@addrtype'] == 'ipv4':
-						address = ai['@addr'] 
-
-			addressmd5 = hashlib.md5(str(address).encode('utf-8')).hexdigest()
 			labelout = '<span id="hostlabel'+str(hostindex)+'"></span>'
 			if scanmd5 in labelhost:
 				if addressmd5 in labelhost[scanmd5]:
@@ -442,6 +513,18 @@ def index(request, filterservice="", filterportid=""):
 					notesb64 = noteshost[scanmd5][addressmd5]
 					notesout = '<br><a id="noteshost'+str(hostindex)+'" href="#!" onclick="javascript:openNotes(\''+hashlib.md5(str(address).encode('utf-8')).hexdigest()+'\', \''+notesb64+'\');" class="small"><i class="fas fa-comment"></i> contains notes</a>'
 					removenotes = '<li><a href="#!" onclick="javascript:removeNotes(\''+addressmd5+'\', \''+str(hostindex)+'\');">Remove notes</a></li>'
+
+			cveout = ''
+			cvecount = 0
+			if scanmd5 in cvehost:
+				if addressmd5 in cvehost[scanmd5]:
+					for cveport in cvehost[scanmd5][addressmd5]:
+						cvejson = json.loads(cvehost[scanmd5][addressmd5][cveport])
+						for cveobj in cvejson:
+							cvecount = (cvecount + 1)
+
+					cveout = '<br><span class="small grey-text"><i class="fas fa-exclamation-triangle orange-text"></i> '+str(cvecount)+' CVE found</span>'
+					# removenotes = '<li><a href="#!" onclick="javascript:removeNotes(\''+addressmd5+'\', \''+str(hostindex)+'\');">Remove notes</a></li>'
 
 			if (filterservice != "" and striggered is True) or (filterportid != "" and striggered is True) or (filterservice == "" and filterportid == ""):
 				portstateout = '<td style="font-size:10px;color:#999;width:300px;"><div style="overflow:none;background-color:#666;" class="tooltipped" data-position="top" data-tooltip="'+str(po)+' open, '+str(pc)+' closed, '+str(pf)+' filtered">'+\
@@ -458,6 +541,7 @@ def index(request, filterservice="", filterportid=""):
 				'		'+ostype+'<br>'+\
 				'		<b><a href="/report/'+str(address)+'">'+str(address)+'</a></b>'+hostname+''+\
 				notesout+\
+				cveout+\
 				'	</td>'+\
 				portstateout+\
 				'	<td style="font-family:monospace;text-align:center;">'+str((po + pf + pc))+'</td>'+\
@@ -612,6 +696,6 @@ def index(request, filterservice="", filterportid=""):
 	#'	<button class="btn red" onclick="javascript:genPDF(\''+scanmd5+'\');">PDF</button>'+\
 	#'<br><br>'
 
+	r['pretable'] += ' <input type="hidden" id="cpestring" value="'+urllib.parse.quote_plus(base64.b64encode(json.dumps(cpe).encode()))+'" /> '
+
 	return render(request, 'nmapreport/index.html', r)
-
-

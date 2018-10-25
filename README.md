@@ -25,6 +25,7 @@ You should use this with docker, just by sending this command:
 $ mkdir /tmp/webmap
 $ docker run -d \
          --name webmap \
+         -e XML_DIR_PATH='/opt/xml' \
          -h webmap \
          -p 8000:8000 \
          -v /tmp/webmap:/opt/xml \

@@ -22,6 +22,8 @@ ALLOWED_HOSTS = ['*']
 
 # Application definition
 
+XML_DIR_PATH = os.environ.get('XML_DIR_PATH', '/opt/xml'),
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',

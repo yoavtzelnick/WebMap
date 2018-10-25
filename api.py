@@ -1,5 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponse
+from django.conf import settings
+import os.path
 import xmltodict, json, html, os, hashlib, re
 from collections import OrderedDict
 
@@ -65,7 +67,7 @@ def label(request, objtype, label, hashstr):
 
 def port_details(request, address, portid):
 	r = {}
-	oo = xmltodict.parse(open('/opt/xml/'+request.session['scanfile'], 'r').read())
+	oo = xmltodict.parse(open(os.path.join(settings.XML_DIR_PATH, request.session['scanfile']), 'r').read())
 	r['out'] = json.dumps(oo['nmaprun'], indent=4)
 	o = json.loads(r['out'])
 
@@ -82,7 +84,7 @@ def port_details(request, address, portid):
 		elif type(i['address']) is list:
 			for ai in i['address']:
 				if ai['@addrtype'] == 'ipv4':
-					saddress = ai['@addr'] 
+					saddress = ai['@addr']
 
 		if str(saddress) == address:
 			for pobj in i['ports']['port']:

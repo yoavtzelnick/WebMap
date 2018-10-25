@@ -1,11 +1,13 @@
 from django.shortcuts import render
 from django.http import HttpResponse
+from django.conf import settings
+import os.path
 import xmltodict, json, html, os, hashlib, re, urllib.parse, base64
 from collections import OrderedDict
 from nmapreport.functions import *
 
 def setscanfile(request, scanfile):
-	xmlfiles = os.listdir('/opt/xml')
+	xmlfiles = os.listdir(settings.XML_DIR_PATH)
 
 	for i in xmlfiles:
 		if i == scanfile:
@@ -24,7 +26,7 @@ def port(request, port):
 
 def details(request, address):
 	r = {}
-	oo = xmltodict.parse(open('/opt/xml/'+request.session['scanfile'], 'r').read())
+	oo = xmltodict.parse(open(os.path.join(settings.XML_DIR_PATH, request.session['scanfile']), 'r').read())
 	r['out2'] = json.dumps(oo['nmaprun'], indent=4)
 	o = json.loads(r['out2'])
 
@@ -70,7 +72,7 @@ def details(request, address):
 		elif type(i['address']) is list:
 			for ai in i['address']:
 				if ai['@addrtype'] == 'ipv4':
-					saddress = ai['@addr'] 
+					saddress = ai['@addr']
 
 
 		if str(saddress) == address:
@@ -152,7 +154,7 @@ def details(request, address):
 								cpe += '<span class="grey-text" style="font-family:monospace;font-size:12px;">'+html.escape(cpei)+'</span><br>'
 						else:
 								cpe = '<span class="grey-text" style="font-family:monospace;font-size:12px;">'+html.escape(p['service']['cpe'])+'</span><br>'
-							
+
 
 					r['trhost'] += '<tr><td style="vertical-align:top;">'+\
 					'<span style="color:#999;font-size:12px;">'+p['service']['@name']+'</span><br>'+\
@@ -218,20 +220,20 @@ def index(request, filterservice="", filterportid=""):
 	r = {}
 
 	if 'scanfile' in request.session:
-		oo = xmltodict.parse(open('/opt/xml/'+request.session['scanfile'], 'r').read())
+		oo = xmltodict.parse(open(os.path.join(settings.XML_DIR_PATH, request.session['scanfile']), 'r').read())
 		r['out2'] = json.dumps(oo['nmaprun'], indent=4)
 		o = json.loads(r['out2'])
 	else:
 		# no file selected
-		xmlfiles = os.listdir('/opt/xml')
+		xmlfiles = os.listdir(settings.XML_DIR_PATH)
 
 
 		r['table'] = '<div class="" style="border-top:solid #444 1px;"><br>'+\
-		'		Put your Nmap XML files in <span class="tmlabel grey-text" style="background-color:transparent;">/opt/xml/</span> directory, example:<br><br>'+\
+		'		Put your Nmap XML files in <span class="tmlabel grey-text" style="background-color:transparent;">{XML_DIR_PATH}</span> directory, example:<br><br>'.format(XML_DIR_PATH=settings.XML_DIR_PATH)+\
 		'		<div class="tmlabel black grey-text" style="padding:10px;font-size:14px;">nmap -A -T4 -oX myscan.xml 192.168.1.0/24<br>'+\
 		'		mv myscan.xml &lt;docker webmap xml dir&gt;<br><br>'+\
 		'		# or you can copy myscan.xml to the webmap container:<br>'+\
-		'		docker cp myscan.xml webmap:/opt/xml/</div>'+\
+		'		docker cp myscan.xml webmap:{XML_DIR_PATH}</div>'.format(XML_DIR_PATH=settings.XML_DIR_PATH)+\
 		'</div>'+\
 		'<script async defer src="https://buttons.github.io/buttons.js"></script>'
 
@@ -258,7 +260,7 @@ def index(request, filterservice="", filterportid=""):
 		r['trhead'] = '<tr><th>Filename</th><th>Scan Start Time</th><th>Hosts</th><th>&nbsp;</th></tr>'
 
 		for i in xmlfiles:
-			oo = xmltodict.parse(open('/opt/xml/'+i, 'r').read())
+			oo = xmltodict.parse(open(os.path.join(settings.XML_DIR_PATH, i), 'r').read())
 			r['out2'] = json.dumps(oo['nmaprun'], indent=4)
 			o = json.loads(r['out2'])
 
@@ -388,7 +390,7 @@ def index(request, filterservice="", filterportid=""):
 				else:
 					picount[p['@portid']] = 1
 
-					
+
 				if p['state']['@state'] == 'closed':
 					ports['closed'] = (ports['closed'] + 1)
 					pc = (pc + 1)
@@ -426,7 +428,7 @@ def index(request, filterservice="", filterportid=""):
 			elif type(i['address']) is list:
 				for ai in i['address']:
 					if ai['@addrtype'] == 'ipv4':
-						address = ai['@addr'] 
+						address = ai['@addr']
 
 			addressmd5 = hashlib.md5(str(address).encode('utf-8')).hexdigest()
 			labelout = '<span id="hostlabel'+str(hostindex)+'"></span>'
@@ -525,7 +527,7 @@ def index(request, filterservice="", filterportid=""):
 	'		xmloutputversion: '+o['@xmloutputversion']+'<br>'+\
 	'	</p>'+\
 	'</div>'
-		
+
 
 	allss = ''
 	allsslabels = ''
@@ -613,5 +615,3 @@ def index(request, filterservice="", filterportid=""):
 	#'<br><br>'
 
 	return render(request, 'nmapreport/index.html', r)
-
-

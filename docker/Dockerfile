@@ -9,7 +9,7 @@
 #   $ git clone https://github.com/Rev3rseSecurity/WebMap.git
 #   $ cd WebMap/docker
 #   $ docker build -t webmap:latest .
-#   $ docker run -d -v /opt/WebMap/docker/xml:/opt/xml -p 8000:8000 webmap:latest
+#   $ docker run -d -e XML_DIR_PATH='/opt/xml' -v /opt/WebMap/docker/xml:/opt/xml -p 8000:8000 webmap:latest
 #
 # Nmap Example:
 #   $ nmap -sT -A -oX /tmp/myscan.xml 192.168.1.0/24
@@ -22,7 +22,7 @@ FROM ubuntu:latest
 RUN apt-get update && apt-get install -y --allow-downgrades --allow-remove-essential --allow-change-held-packages \
     python3 python3-pip curl wget git wkhtmltopdf libssl1.0-dev
 
-RUN mkdir /opt/xml && mkdir /opt/notes && \
+RUN mkdir $X && mkdir /opt/notes && \
     wget -P /opt/ https://github.com/wkhtmltopdf/wkhtmltopdf/releases/download/0.12.4/wkhtmltox-0.12.4_linux-generic-amd64.tar.xz && \
     cd /opt/ && tar -xvf /opt/wkhtmltox-0.12.4_linux-generic-amd64.tar.xz
 

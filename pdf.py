@@ -1,8 +1,10 @@
 from django.shortcuts import render
 from django.http import HttpResponse
+from django.conf import settings
 import xmltodict, json, html, os, hashlib, re, urllib.parse, base64
 from collections import OrderedDict
 from nmapreport.functions import *
+import os.path
 #from view import labelToColor
 
 def reportPDFView(request):
@@ -11,11 +13,11 @@ def reportPDFView(request):
 	}
 
 	if 'scanfile' in request.session:
-		oo = xmltodict.parse(open('/opt/xml/'+request.session['scanfile'], 'r').read())
+		oo = xmltodict.parse(open(os.path.join(settings.XML_DIR_PATH, request.session['scanfile']), 'r').read())
 		r['out2'] = json.dumps(oo['nmaprun'], indent=4)
 		o = json.loads(r['out2'])
 	else:
-		return HttpResponse('error: scan file not loaded', content_type="text/html")	
+		return HttpResponse('error: scan file not loaded', content_type="text/html")
 
 	r['html'] = ''
 	hostdetails = ''
@@ -43,7 +45,7 @@ def reportPDFView(request):
 		elif type(i['address']) is list:
 			for ai in i['address']:
 				if ai['@addrtype'] == 'ipv4':
-					saddress = ai['@addr'] 
+					saddress = ai['@addr']
 
 		addressmd5 = hashlib.md5(str(saddress).encode('utf-8')).hexdigest()
 
@@ -148,7 +150,7 @@ def reportPDFView(request):
 					hdhtml_protocolor = 'blue'
 				elif p['@protocol'] == 'udp':
 					hdhtml_protocolor = 'red'
-				
+
 				hostdetails_html_tr += '<tr>'+\
 				'	<td><span class="'+hdhtml_protocolor+'-text">'+p['@protocol']+'</span> / <span class=""><b>'+p['@portid']+'</b></span><br><span class="small">'+p['service']['@name']+'</span></td>'+\
 				'	<td>'+hdhtml_stateico+' '+p['state']['@state']+'</td>'+\
@@ -342,5 +344,3 @@ def reportPDFView(request):
 	'</div>'
 
 	return render(request, 'nmapreport/report.html', r)
-
-

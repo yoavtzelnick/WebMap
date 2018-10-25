@@ -301,6 +301,8 @@ def index(request, filterservice="", filterportid=""):
 		r['trhead'] = '<tr><th>Filename</th><th>Scan Start Time</th><th>Hosts</th><th>&nbsp;</th></tr>'
 
 		for i in xmlfiles:
+			if re.search('\.xml$', i) is None:
+				continue
 			oo = xmltodict.parse(open('/opt/xml/'+i, 'r').read())
 			r['out2'] = json.dumps(oo['nmaprun'], indent=4)
 			o = json.loads(r['out2'])
